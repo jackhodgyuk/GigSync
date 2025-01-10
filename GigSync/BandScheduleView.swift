@@ -27,9 +27,12 @@ struct BandScheduleView: View {
     
     private func loadEvents() {
         Task {
+            isLoading = true
             if let bandId = band.id {
-                events = try await BandService.shared.getBandEvents(bandId: bandId)
+                let fetchedEvents = try await BandService.shared.getBandEvents(bandId: bandId)
+                events = fetchedEvents.sorted { $0.date < $1.date }
             }
+            isLoading = false
         }
     }
 }
