@@ -6,6 +6,25 @@ class BandService {
     static let shared = BandService()
     private let db = Firestore.firestore()
     
+    enum BandError: Error {
+        case invalidInviteCode
+        case bandNotFound
+        case userAlreadyMember
+        case networkError
+        case userNotAuthenticated
+        
+        var localizedDescription: String {
+            switch self {
+            case .invalidInviteCode: return "Invalid invite code"
+            case .bandNotFound: return "Band not found"
+            case .userAlreadyMember: return "You're already a member of this band"
+            case .networkError: return "Network connection error"
+            case .userNotAuthenticated: return "Please sign in to join a band"
+            }
+        }
+    }
+    
+    // Core Band Operations
     func addMemberToBand(userId: String, bandId: String) async throws {
         let bandRef = db.collection("bands").document(bandId)
         let userRef = db.collection("users").document(userId)
@@ -13,7 +32,7 @@ class BandService {
         _ = try await db.runTransaction { (transaction, _) -> Any? in
             transaction.updateData([
                 "members.\(userId)": [
-                    "role": "member",
+                    "role": BandRole.member.rawValue,
                     "joinedAt": Date()
                 ]
             ], forDocument: bandRef)
@@ -45,28 +64,54 @@ class BandService {
     
     func getUserBands(userId: String) async throws -> [Band] {
         let userDoc = try await db.collection("users").document(userId).getDocument()
-        guard let bandIds = userDoc.data()?["bandIds"] as? [String] else { return [] }
-        
-        let bands = try await withThrowingTaskGroup(of: Band?.self) { group in
-            for bandId in bandIds {
-                group.addTask {
-                    let bandDoc = try? await self.db.collection("bands").document(bandId).getDocument()
-                    return try? bandDoc?.data(as: Band.self)
-                }
-            }
-            
-            var results: [Band] = []
-            for try await band in group {
-                if let band = band {
-                    results.append(band)
-                }
-            }
-            return results
+        guard let bandIds = userDoc.data()?["bandIds"] as? [String] else {
+            print("No band IDs found for user")
+            return []
         }
         
+        print("Found band IDs: \(bandIds)")
+        var bands: [Band] = []
+        
+        for bandId in bandIds {
+            do {
+                let bandDoc = try await db.collection("bands").document(bandId).getDocument()
+                guard let data = bandDoc.data() else { continue }
+                
+                var convertedMembers: [String: BandMemberInfo] = [:]
+                if let members = data["members"] as? [String: [String: Any]] {
+                    for (userId, memberData) in members {
+                        if let roleString = memberData["role"] as? String,
+                           let role = BandRole(rawValue: roleString),
+                           let joinedAt = memberData["joinedAt"] as? Timestamp {
+                            convertedMembers[userId] = BandMemberInfo(
+                                role: role,
+                                joinedAt: joinedAt.dateValue()
+                            )
+                        }
+                    }
+                }
+                
+                let band = Band(
+                    id: bandDoc.documentID,
+                    name: data["name"] as? String ?? "",
+                    members: convertedMembers,
+                    createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                    imageUrl: data["imageUrl"] as? String,
+                    description: data["description"] as? String,
+                    genre: data["genre"] as? String ?? "",
+                    joinCode: data["joinCode"] as? String ?? ""
+                )
+                
+                bands.append(band)
+                print("Successfully loaded band: \(band.name)")
+            } catch {
+                print("Error loading band \(bandId): \(error)")
+            }
+        }
+        
+        print("Total bands loaded: \(bands.count)")
         return bands
     }
-    
     func getBandStats(bandId: String, timeframe: TimeFrame) async throws -> BandStats {
         let startDate = timeframe.startDate
         
@@ -190,53 +235,6 @@ class BandService {
         }.sorted { $0.date < $1.date }
     }
     
-    func createBand(name: String, genre: String) async throws -> String {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            throw BandError.userNotAuthenticated
-        }
-        
-        let joinCode = UUID().uuidString.prefix(6).uppercased()
-        let bandData: [String: Any] = [
-            "name": name,
-            "genre": genre,
-            "createdAt": Date(),
-            "joinCode": joinCode,
-            "members": [
-                userId: [
-                    "role": "admin",
-                    "joinedAt": Date()
-                ]
-            ]
-        ]
-        
-        let docRef = try await db.collection("bands").addDocument(data: bandData)
-        
-        // Update user's bandIds
-        try await db.collection("users").document(userId).updateData([
-            "bandIds": FieldValue.arrayUnion([docRef.documentID])
-        ])
-        
-        return docRef.documentID
-    }
-    
-    enum BandError: Error {
-        case invalidInviteCode
-        case bandNotFound
-        case userAlreadyMember
-        case networkError
-        case userNotAuthenticated
-        
-        var localizedDescription: String {
-            switch self {
-            case .invalidInviteCode: return "Invalid invite code"
-            case .bandNotFound: return "Band not found"
-            case .userAlreadyMember: return "You're already a member of this band"
-            case .networkError: return "Network connection error"
-            case .userNotAuthenticated: return "Please sign in to join a band"
-            }
-        }
-    }
-    
     func joinBand(code: String) async throws {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             throw BandError.userNotAuthenticated
@@ -252,7 +250,6 @@ class BandService {
         
         let bandId = bandDoc.documentID
         
-        // Check if user is already a member
         let memberDoc = try await db.collection("bands")
             .document(bandId)
             .collection("members")
@@ -263,24 +260,18 @@ class BandService {
             throw BandError.userAlreadyMember
         }
         
-        // Add member to band
         try await addMemberToBand(userId: currentUserId, bandId: bandId)
     }
-    // Add these new methods to your existing BandService class
     
     func createBandWithUser(name: String, genre: String) async throws -> Band {
         guard let userId = Auth.auth().currentUser?.uid else {
             throw BandError.userNotAuthenticated
         }
         
-        let db = Firestore.firestore()
-        let batch = db.batch()
-        
-        // Create new band document
         let bandRef = db.collection("bands").document()
         let joinCode = UUID().uuidString.prefix(6).uppercased()
         
-        let memberInfo = MemberInfo(role: "admin", joinedAt: Date())
+        let memberInfo = BandMemberInfo(role: .admin, joinedAt: Date())
         let band = Band(
             id: bandRef.documentID,
             name: name,
@@ -292,9 +283,9 @@ class BandService {
             joinCode: joinCode
         )
         
+        let batch = db.batch()
         try batch.setData(from: band, forDocument: bandRef)
         
-        // Update user's bandIds
         let userRef = db.collection("users").document(userId)
         batch.updateData([
             "bandIds": FieldValue.arrayUnion([bandRef.documentID])

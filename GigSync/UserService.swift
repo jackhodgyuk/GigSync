@@ -31,8 +31,10 @@ class UserService {
         let bands = try await withThrowingTaskGroup(of: Band?.self) { group in
             for bandId in bandIds {
                 group.addTask {
-                    let bandDoc = try? await self.db.collection("bands").document(bandId).getDocument()
-                    return try? bandDoc?.data(as: Band.self)
+                    if let bandDoc = try? await self.db.collection("bands").document(bandId).getDocument() {
+                        return try? Band.from(document: bandDoc)
+                    }
+                    return nil
                 }
             }
             

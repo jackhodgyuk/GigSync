@@ -73,23 +73,9 @@ struct CreateBandView: View {
         
         Task {
             do {
-                let bandId = try await BandService.shared.createBand(
+                let newBand = try await BandService.shared.createBandWithUser(
                     name: bandName,
                     genre: genre
-                )
-                
-                let memberInfo = MemberInfo(role: "admin", joinedAt: Date())
-                try await BandService.shared.addMemberToBand(userId: userId, bandId: bandId)
-                
-                let newBand = Band(
-                    id: bandId,
-                    name: bandName,
-                    members: [userId: memberInfo],
-                    createdAt: Date(),
-                    imageUrl: nil,
-                    description: nil,
-                    genre: genre,
-                    joinCode: UUID().uuidString.prefix(6).uppercased()
                 )
                 
                 await MainActor.run {

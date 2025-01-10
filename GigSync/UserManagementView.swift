@@ -28,10 +28,9 @@ struct UserManagementView: View {
                 guard let data = snapshot?.data(),
                       let members = data["members"] as? [String: [String: Any]] else { return }
                 
-                let membersCopy = members
                 Task { @MainActor in
                     var updatedMembers: [BandMember] = []
-                    for (userId, memberData) in membersCopy {
+                    for (userId, memberData) in members {
                         if let userData = try? await UserService.shared.getUser(userId: userId) {
                             let role = memberData["role"] as? String ?? "member"
                             updatedMembers.append(BandMember(
@@ -42,7 +41,7 @@ struct UserManagementView: View {
                             ))
                         }
                     }
-                    bandMembers = updatedMembers
+                    bandMembers = updatedMembers.sorted { $0.name < $1.name }
                 }
             }
     }

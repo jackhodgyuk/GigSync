@@ -1,11 +1,3 @@
-//
-//  BandManagementView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 import FirebaseFirestore
 
@@ -29,7 +21,7 @@ struct BandManagementView: View {
                 if let members = band?.members {
                     ForEach(Array(members.keys), id: \.self) { userId in
                         if let member = members[userId] {
-                            MemberRow(userId: userId, role: member.role) {
+                            MemberRow(userId: userId, role: member.role.rawValue) {
                                 removeMember(userId: userId)
                             }
                         }

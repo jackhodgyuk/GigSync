@@ -8,6 +8,7 @@ class AuthenticationManager: ObservableObject {
     @Published var isAuthenticated = Auth.auth().currentUser != nil
     @Published var userBands: [Band] = []
     private var stateListener: AuthStateDidChangeListenerHandle?
+    private let db = Firestore.firestore()
     
     init() {
         stateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
@@ -23,7 +24,9 @@ class AuthenticationManager: ObservableObject {
     }
     
     func signIn(email: String, password: String) async throws {
-        try await Auth.auth().signIn(withEmail: email, password: password)
+        let result = try await Auth.auth().signIn(withEmail: email, password: password)
+        isAuthenticated = true
+        print("User signed in: \(result.user.uid)")
         await loadUserBands()
     }
     
@@ -39,7 +42,6 @@ class AuthenticationManager: ObservableObject {
             "createdAt": Timestamp(date: Date())
         ] as [String: Any]
         
-        let db = Firestore.firestore()
         try await db.collection("users").document(userId).setData(userData)
         
         isAuthenticated = true
@@ -53,10 +55,47 @@ class AuthenticationManager: ObservableObject {
     }
     
     func loadUserBands() async {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("No authenticated user found")
+            return
+        }
+        
         do {
-            let bands = try await BandService.shared.getUserBands(userId: userId)
+            let userDoc = try await db.collection("users").document(userId).getDocument()
+            guard let bandIds = userDoc.data()?["bandIds"] as? [String] else {
+                print("No band IDs found for user")
+                return
+            }
+            
+            print("Found band IDs: \(bandIds)")
+            
+            let bands = try await withThrowingTaskGroup(of: Band?.self) { group in
+                for bandId in bandIds {
+                    group.addTask {
+                        print("Attempting to fetch band: \(bandId)")
+                        let bandDoc = try await self.db.collection("bands").document(bandId).getDocument()
+                        print("Band document exists: \(bandDoc.exists)")
+                        if let data = bandDoc.data() {
+                            print("Band data: \(data)")
+                        }
+                        let band = try? bandDoc.data(as: Band.self)
+                        print("Band decoded: \(band != nil)")
+                        return band
+                    }
+                }
+                
+                var results: [Band] = []
+                for try await band in group {
+                    if let band = band {
+                        results.append(band)
+                    }
+                }
+                return results
+            }
+            
+            print("Loaded bands: \(bands.count)")
             self.userBands = bands
+            
         } catch {
             print("Error loading user bands: \(error.localizedDescription)")
             self.userBands = []
@@ -69,3 +108,4 @@ class AuthenticationManager: ObservableObject {
         }
     }
 }
+

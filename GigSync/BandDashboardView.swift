@@ -3,12 +3,12 @@ import FirebaseAuth
 
 struct BandDashboardView: View {
     let band: Band
-    @State private var userRole: String = ""
+    @State private var userRole: BandRole = .member
     
     var body: some View {
         TabView {
             Group {
-                if userRole == "admin" || userRole == "manager" {
+                if userRole == .admin {
                     adminManagerTabs
                 } else {
                     memberTabs
@@ -44,7 +44,7 @@ struct BandDashboardView: View {
                     Label("Chat", systemImage: "message")
                 }
             
-            if userRole == "admin" {
+            if userRole == .admin {
                 UserManagementView(bandId: band.id)
                     .tabItem {
                         Label("Members", systemImage: "person.2")
