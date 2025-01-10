@@ -2,7 +2,7 @@ import SwiftUI
 import FirebaseAuth
 
 struct AuthView: View {
-    @StateObject private var authManager = AuthenticationManager.shared
+    let authManager: AuthenticationManager = AuthenticationManager.shared
     @Environment(\.dismiss) var dismiss
     
     // MARK: - Properties
@@ -14,6 +14,8 @@ struct AuthView: View {
     @State private var errorMessage: String?
     @State private var showBandSetup = false
     @State private var shouldNavigate = false
+    @State private var rememberMe = false
+    @State private var showUserProfile = false
     
     let completion: (Bool) -> Void
     
@@ -25,20 +27,46 @@ struct AuthView: View {
     
     // MARK: - Body
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                signUpFields
-                credentialFields
-                errorView
-                authButton
-            }
-            .padding()
-            .navigationTitle(isSignUp ? "Create Account" : "Sign In")
-            .navigationBarBackButtonHidden(isLoading)
-            .navigationDestination(isPresented: $shouldNavigate) {
-                if isSignUp {
-                    BandSetupView()
+        Group {
+            if showUserProfile {
+                UserProfileView()
+            } else {
+                NavigationStack {
+                    VStack(spacing: 20) {
+                        signUpFields
+                        credentialFields
+                        
+                        if !isSignUp {
+                            Toggle("Remember Me", isOn: $rememberMe)
+                                .padding(.horizontal)
+                            
+                            if authManager.rememberLogin {
+                                Button("Forget Saved Account") {
+                                    authManager.forgetSavedCredentials()
+                                }
+                                .foregroundColor(.red)
+                            }
+                        }
+                        
+                        errorView
+                        authButton
+                    }
+                    .padding()
+                    .navigationTitle(isSignUp ? "Create Account" : "Sign In")
+                    .navigationBarBackButtonHidden(isLoading)
+                    .navigationDestination(isPresented: $shouldNavigate) {
+                        if isSignUp {
+                            BandSetupView()
+                        }
+                    }
                 }
+            }
+        }
+        .onAppear {
+            if !isSignUp && authManager.rememberLogin {
+                showUserProfile = true
+                email = authManager.savedEmail
+                password = authManager.savedPassword
             }
         }
     }
@@ -107,10 +135,9 @@ struct AuthView: View {
                     shouldNavigate = true
                     completion(true)
                 } else {
-                    try await authManager.signIn(email: email, password: password)
-                    authManager.isAuthenticated = true
-                    dismiss()
+                    try await authManager.signIn(email: email, password: password, remember: rememberMe)
                     completion(true)
+                    dismiss()
                 }
             } catch {
                 errorMessage = error.localizedDescription

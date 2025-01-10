@@ -27,7 +27,10 @@ struct BandSettingsView: View {
             }
             
             Section(header: Text("Invite Code")) {
-                InviteCodeView(bandId: band.id, initialCode: band.id)  // Using band.id as the invite code
+                InviteCodeView(
+                    bandId: band.id ?? "",
+                    initialCode: band.id ?? ""
+                )
             }
             
             Section(header: Text("Danger Zone")) {
@@ -52,7 +55,9 @@ struct BandSettingsView: View {
     private func deleteBand() {
         isLoading = true
         Task {
-            try? await db.collection("bands").document(band.id).delete()
+            if let bandId = band.id {
+                try? await db.collection("bands").document(bandId).delete()
+            }
             isLoading = false
         }
     }

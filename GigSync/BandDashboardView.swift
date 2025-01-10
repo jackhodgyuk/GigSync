@@ -7,12 +7,10 @@ struct BandDashboardView: View {
     
     var body: some View {
         TabView {
-            Group {
-                if userRole == .admin {
-                    adminManagerTabs
-                } else {
-                    memberTabs
-                }
+            if userRole == .admin {
+                adminManagerTabs
+            } else {
+                memberTabs
             }
         }
         .navigationTitle(band.name)
@@ -21,62 +19,60 @@ struct BandDashboardView: View {
         }
     }
     
-    // MARK: - Tab Views
     private var adminManagerTabs: some View {
         Group {
-            GigManagementView(bandId: band.id)
+            GigManagementView(bandId: band.id ?? "")
                 .tabItem {
                     Label("Gigs", systemImage: "calendar")
                 }
             
-            SetlistManagementView(bandId: band.id)
+            SetlistManagementView(bandId: band.id ?? "")
                 .tabItem {
                     Label("Setlists", systemImage: "music.note.list")
                 }
             
-            FinanceManagementView(bandId: band.id)
+            FinanceManagementView(bandId: band.id ?? "")
                 .tabItem {
                     Label("Finances", systemImage: "dollarsign.circle")
                 }
             
-            ChatView(bandId: band.id)
+            ChatView(bandId: band.id ?? "")
                 .tabItem {
                     Label("Chat", systemImage: "message")
                 }
             
-            if userRole == .admin {
-                UserManagementView(bandId: band.id)
-                    .tabItem {
-                        Label("Members", systemImage: "person.2")
-                    }
-            }
+            UserManagementView(bandId: band.id ?? "")
+                .tabItem {
+                    Label("Members", systemImage: "person.2")
+                }
         }
     }
     
     private var memberTabs: some View {
         Group {
-            GigListView(bandId: band.id)
+            GigListView(bandId: band.id ?? "")
                 .tabItem {
                     Label("Gigs", systemImage: "calendar")
                 }
             
-            SetlistView(bandId: band.id)
+            SetlistView(bandId: band.id ?? "")
                 .tabItem {
                     Label("Setlists", systemImage: "music.note.list")
                 }
             
-            ChatView(bandId: band.id)
+            ChatView(bandId: band.id ?? "")
                 .tabItem {
                     Label("Chat", systemImage: "message")
                 }
         }
     }
     
-    // MARK: - Helper Methods
     private func loadUserRole() {
         if let currentUserId = Auth.auth().currentUser?.uid,
            let memberInfo = band.members[currentUserId] {
             userRole = memberInfo.role
+        } else {
+            userRole = .admin // Set as admin for newly created bands
         }
     }
 }

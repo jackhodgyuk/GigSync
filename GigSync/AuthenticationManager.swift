@@ -7,10 +7,22 @@ class AuthenticationManager: ObservableObject {
     static let shared = AuthenticationManager()
     @Published var isAuthenticated = Auth.auth().currentUser != nil
     @Published var userBands: [Band] = []
+    @AppStorage("savedEmail") private var savedEmailPrivate: String = ""
+    @AppStorage("savedPassword") private var savedPasswordPrivate: String = ""
+    @AppStorage("savedName") private var savedNamePrivate: String = ""
+    @AppStorage("rememberLogin") var rememberLogin: Bool = false
     private var stateListener: AuthStateDidChangeListenerHandle?
     private let db = Firestore.firestore()
     
+    var savedEmail: String { savedEmailPrivate }
+    var savedPassword: String { savedPasswordPrivate }
+    var savedName: String { savedNamePrivate }
+    
     init() {
+        setupAuthStateListener()
+    }
+    
+    private func setupAuthStateListener() {
         stateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             self?.isAuthenticated = user != nil
             if user != nil {
@@ -23,11 +35,27 @@ class AuthenticationManager: ObservableObject {
         }
     }
     
-    func signIn(email: String, password: String) async throws {
+    func signIn(email: String, password: String, remember: Bool = false) async throws {
         let result = try await Auth.auth().signIn(withEmail: email, password: password)
+        if remember {
+            savedEmailPrivate = email
+            savedPasswordPrivate = password
+            let userDoc = try await db.collection("users").document(result.user.uid).getDocument()
+            if let name = userDoc.data()?["name"] as? String {
+                savedNamePrivate = name
+            }
+            rememberLogin = true
+        }
         isAuthenticated = true
         print("User signed in: \(result.user.uid)")
         await loadUserBands()
+    }
+    
+    func forgetSavedCredentials() {
+        savedEmailPrivate = ""
+        savedPasswordPrivate = ""
+        savedNamePrivate = ""
+        rememberLogin = false
     }
     
     func signUp(email: String, password: String, name: String) async throws {
@@ -43,7 +71,6 @@ class AuthenticationManager: ObservableObject {
         ] as [String: Any]
         
         try await db.collection("users").document(userId).setData(userData)
-        
         isAuthenticated = true
         await loadUserBands()
     }
@@ -67,20 +94,24 @@ class AuthenticationManager: ObservableObject {
                 return
             }
             
-            print("Found band IDs: \(bandIds)")
-            
-            let bands = try await withThrowingTaskGroup(of: Band?.self) { group in
+            let bands = try await withThrowingTaskGroup(of: Band?.self) { [weak self] group in
                 for bandId in bandIds {
                     group.addTask {
-                        print("Attempting to fetch band: \(bandId)")
-                        let bandDoc = try await self.db.collection("bands").document(bandId).getDocument()
-                        print("Band document exists: \(bandDoc.exists)")
-                        if let data = bandDoc.data() {
-                            print("Band data: \(data)")
+                        let bandDoc = try await self?.db.collection("bands").document(bandId).getDocument()
+                        if let doc = bandDoc {
+                            let data = doc.data() ?? [:]
+                            return Band(
+                                id: doc.documentID,
+                                name: data["name"] as? String ?? "",
+                                members: data["members"] as? [String: BandMemberInfo] ?? [:],
+                                createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                                imageUrl: data["imageUrl"] as? String,
+                                description: data["description"] as? String,
+                                genre: data["genre"] as? String ?? "",
+                                joinCode: data["joinCode"] as? String ?? ""
+                            )
                         }
-                        let band = try? bandDoc.data(as: Band.self)
-                        print("Band decoded: \(band != nil)")
-                        return band
+                        return nil
                     }
                 }
                 
@@ -90,10 +121,9 @@ class AuthenticationManager: ObservableObject {
                         results.append(band)
                     }
                 }
-                return results
+                return results.sorted { $0.name < $1.name }
             }
             
-            print("Loaded bands: \(bands.count)")
             self.userBands = bands
             
         } catch {
@@ -108,4 +138,3 @@ class AuthenticationManager: ObservableObject {
         }
     }
 }
-

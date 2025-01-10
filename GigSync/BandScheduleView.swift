@@ -1,11 +1,3 @@
-//
-//  BandScheduleView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 
 struct BandScheduleView: View {
@@ -35,7 +27,9 @@ struct BandScheduleView: View {
     
     private func loadEvents() {
         Task {
-            events = try await BandService.shared.getBandEvents(bandId: band.id)
+            if let bandId = band.id {
+                events = try await BandService.shared.getBandEvents(bandId: bandId)
+            }
         }
     }
 }

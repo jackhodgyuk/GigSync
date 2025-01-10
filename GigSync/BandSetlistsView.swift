@@ -28,7 +28,7 @@ struct BandSetlistsView: View {
             }
         }
         .sheet(isPresented: $showingCreateSheet) {
-            CreateSetlistView(eventId: "", bandId: band.id)
+            CreateSetlistView(eventId: "", bandId: band.id ?? "")
         }
         .onAppear {
             loadSetlists()
@@ -37,8 +37,9 @@ struct BandSetlistsView: View {
     
     private func loadSetlists() {
         Task {
-            // Here's where we'll implement the setlist loading logic
-            // setlists = try await BandService.shared.getBandSetlists(bandId: band.id)
+            if let bandId = band.id {
+                setlists = try await BandService.shared.getBandSetlists(bandId: bandId)
+            }
         }
     }
 }

@@ -56,8 +56,13 @@ struct CreateBandView: View {
             if let band = createdBand {
                 BandDashboardView(band: band)
                     .navigationBarBackButtonHidden()
+                    .onAppear {
+                        // Reset navigation state after successful transition
+                        navigateToBandDashboard = false
+                    }
             }
         }
+        
         .alert("No Internet Connection", isPresented: .constant(!networkMonitor.isConnected)) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -66,8 +71,7 @@ struct CreateBandView: View {
     }
     
     private func createBand() {
-        guard networkMonitor.isConnected else { return }
-        guard let userId = Auth.auth().currentUser?.uid else { return }
+        guard networkMonitor.isConnected, Auth.auth().currentUser != nil else { return }
         isLoading = true
         errorMessage = nil
         

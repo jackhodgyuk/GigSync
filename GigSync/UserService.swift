@@ -32,7 +32,17 @@ class UserService {
             for bandId in bandIds {
                 group.addTask {
                     if let bandDoc = try? await self.db.collection("bands").document(bandId).getDocument() {
-                        return try? Band.from(document: bandDoc)
+                        let data = bandDoc.data() ?? [:]
+                        return Band(
+                            id: bandDoc.documentID,
+                            name: data["name"] as? String ?? "",
+                            members: data["members"] as? [String: BandMemberInfo] ?? [:],
+                            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            imageUrl: data["imageUrl"] as? String,
+                            description: data["description"] as? String,
+                            genre: data["genre"] as? String ?? "",
+                            joinCode: data["joinCode"] as? String ?? ""
+                        )
                     }
                     return nil
                 }

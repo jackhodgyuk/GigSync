@@ -1,11 +1,3 @@
-//
-//  BandStatsView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import Charts
 import Foundation
 import SwiftUI
@@ -64,7 +56,7 @@ struct BandStatsView: View {
     private func loadStats() {
         Task {
             stats = try? await BandService.shared.getBandStats(
-                bandId: band.id,
+                bandId: band.id ?? "",
                 timeframe: selectedTimeframe
             )
         }

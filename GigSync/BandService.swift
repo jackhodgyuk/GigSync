@@ -112,6 +112,25 @@ class BandService {
         print("Total bands loaded: \(bands.count)")
         return bands
     }
+    
+    func getBandSetlists(bandId: String) async throws -> [Setlist] {
+        let snapshot = try await db.collection("bands")
+            .document(bandId)
+            .collection("setlists")
+            .getDocuments()
+        
+        return snapshot.documents.compactMap { document in
+            let data = document.data()
+            return Setlist(
+                id: document.documentID,
+                name: data["name"] as? String ?? "",
+                bandId: bandId,
+                songs: data["songs"] as? [Song] ?? [],
+                createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+            )
+        }
+    }
+    
     func getBandStats(bandId: String, timeframe: TimeFrame) async throws -> BandStats {
         let startDate = timeframe.startDate
         
