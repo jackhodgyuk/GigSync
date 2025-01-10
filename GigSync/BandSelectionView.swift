@@ -11,9 +11,9 @@ struct BandSelectionView: View {
         NavigationView {
             ZStack {
                 LinearGradient(gradient: Gradient(colors: [.blue.opacity(0.1), .purple.opacity(0.1)]),
-                             startPoint: .topLeading,
-                             endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
+                               startPoint: .topLeading,
+                               endPoint: .bottomTrailing)
+                .ignoresSafeArea()
                 
                 Group {
                     if isLoading {
@@ -43,6 +43,9 @@ struct BandSelectionView: View {
             }
             .refreshable {
                 await loadBandsWithRetry()
+            }
+            .task {
+                await BandService.shared.diagnoseBandAccess(userId: Auth.auth().currentUser?.uid ?? "")
             }
         }
     }
@@ -128,42 +131,42 @@ struct BandSelectionView: View {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
     }
-}
-
-struct BandCard: View {
-    let band: Band
     
-    var body: some View {
-        HStack(spacing: 16) {
-            Circle()
-                .fill(LinearGradient(colors: [.blue, .purple],
-                                   startPoint: .topLeading,
-                                   endPoint: .bottomTrailing))
-                .frame(width: 50, height: 50)
-                .overlay {
-                    Text(band.name.prefix(1).uppercased())
-                        .font(.title2.bold())
-                        .foregroundColor(.white)
-                }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(band.name)
-                    .font(.title3)
-                    .fontWeight(.semibold)
+    struct BandCard: View {
+        let band: Band
+        
+        var body: some View {
+            HStack(spacing: 16) {
+                Circle()
+                    .fill(LinearGradient(colors: [.blue, .purple],
+                                         startPoint: .topLeading,
+                                         endPoint: .bottomTrailing))
+                    .frame(width: 50, height: 50)
+                    .overlay {
+                        Text(band.name.prefix(1).uppercased())
+                            .font(.title2.bold())
+                            .foregroundColor(.white)
+                    }
                 
-                Text("\(band.memberCount) members • \(band.genre)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(band.name)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    
+                    Text("\(band.memberCount) members • \(band.genre)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
             }
-            
-            Spacer()
-            
-            Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(15)
+            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(15)
-        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }

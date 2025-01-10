@@ -1,11 +1,3 @@
-//
-//  AddGigEventView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 import FirebaseAuth
 
@@ -63,9 +55,9 @@ struct AddGigEventView: View {
             do {
                 try await BandService.shared.createEvent(
                     title: title,
+                    date: date,
                     location: location,
                     type: eventType,
-                    date: date,
                     notes: notes.isEmpty ? nil : notes,
                     bandId: bandId,
                     createdBy: userId

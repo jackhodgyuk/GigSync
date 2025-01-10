@@ -40,10 +40,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct GigSyncApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject private var authManager = AuthenticationManager.shared
     
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(authManager)
         }
     }
 }

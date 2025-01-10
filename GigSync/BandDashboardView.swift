@@ -72,7 +72,7 @@ struct BandDashboardView: View {
            let memberInfo = band.members[currentUserId] {
             userRole = memberInfo.role
         } else {
-            userRole = .admin
+            userRole = .member
         }
     }
 }

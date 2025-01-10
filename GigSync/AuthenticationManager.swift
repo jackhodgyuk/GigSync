@@ -88,44 +88,11 @@ class AuthenticationManager: ObservableObject {
         }
         
         do {
-            let userDoc = try await db.collection("users").document(userId).getDocument()
-            guard let bandIds = userDoc.data()?["bandIds"] as? [String] else {
-                print("No band IDs found for user")
-                return
+            let bands = try await BandService.shared.getUserBands(userId: userId)
+            print("Loaded \(bands.count) bands directly from bands collection")
+            await MainActor.run {
+                self.userBands = bands.sorted { $0.name < $1.name }
             }
-            
-            let bands = try await withThrowingTaskGroup(of: Band?.self) { [weak self] group in
-                for bandId in bandIds {
-                    group.addTask {
-                        let bandDoc = try await self?.db.collection("bands").document(bandId).getDocument()
-                        if let doc = bandDoc {
-                            let data = doc.data() ?? [:]
-                            return Band(
-                                id: doc.documentID,
-                                name: data["name"] as? String ?? "",
-                                members: data["members"] as? [String: BandMemberInfo] ?? [:],
-                                createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
-                                imageUrl: data["imageUrl"] as? String,
-                                description: data["description"] as? String,
-                                genre: data["genre"] as? String ?? "",
-                                joinCode: data["joinCode"] as? String ?? ""
-                            )
-                        }
-                        return nil
-                    }
-                }
-                
-                var results: [Band] = []
-                for try await band in group {
-                    if let band = band {
-                        results.append(band)
-                    }
-                }
-                return results.sorted { $0.name < $1.name }
-            }
-            
-            self.userBands = bands
-            
         } catch {
             print("Error loading user bands: \(error.localizedDescription)")
             self.userBands = []
