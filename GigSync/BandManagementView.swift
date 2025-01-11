@@ -18,6 +18,11 @@ struct BandManagementView: View {
             }
             
             Section("Members") {
+                NavigationLink(destination: UserManagementView(bandId: bandId)) {
+                    Label("Manage Members", systemImage: "person.2")
+                        .font(.headline)
+                }
+                
                 if let members = band?.members {
                     ForEach(Array(members.keys), id: \.self) { userId in
                         if let member = members[userId] {

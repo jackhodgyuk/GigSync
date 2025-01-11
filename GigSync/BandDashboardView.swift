@@ -7,63 +7,44 @@ struct BandDashboardView: View {
     
     var body: some View {
         TabView {
-            if userRole == .admin {
-                adminManagerTabs
-            } else {
-                memberTabs
+            if let bandId = band.id {
+                if userRole == .admin {
+                    adminManagerTabs(bandId: bandId)
+                } else {
+                    memberTabs(bandId: bandId)
+                }
             }
         }
         .navigationTitle(band.name)
         .onAppear {
             loadUserRole()
+            print("Band Dashboard loaded with ID: \(band.id ?? "none")")
         }
     }
     
-    private var adminManagerTabs: some View {
-        Group {
-            GigManagementView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Gigs", systemImage: "calendar")
-                }
-            
-            SetlistManagementView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Setlists", systemImage: "music.note.list")
-                }
-            
-            FinanceManagementView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Finances", systemImage: "dollarsign.circle")
-                }
-            
-            ChatView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Chat", systemImage: "message")
-                }
-            
-            UserManagementView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Members", systemImage: "person.2")
-                }
+    private func adminManagerTabs(bandId: String) -> some View {
+        ForEach([
+            ("Gigs", "calendar", AnyView(GigManagementView(bandId: bandId))),
+            ("Setlists", "music.note.list", AnyView(SetlistManagementView(bandId: bandId))),
+            ("Finances", "dollarsign.circle", AnyView(FinanceManagementView(bandId: bandId))),
+            ("Chat", "message", AnyView(ChatView(bandId: bandId))),
+            ("Members", "person.2", AnyView(UserManagementView(bandId: bandId)))
+        ], id: \.0) { title, icon, view in
+            view.tabItem {
+                Label(title, systemImage: icon)
+            }
         }
     }
     
-    private var memberTabs: some View {
-        Group {
-            GigListView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Gigs", systemImage: "calendar")
-                }
-            
-            SetlistView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Setlists", systemImage: "music.note.list")
-                }
-            
-            ChatView(bandId: band.id ?? "")
-                .tabItem {
-                    Label("Chat", systemImage: "message")
-                }
+    private func memberTabs(bandId: String) -> some View {
+        ForEach([
+            ("Gigs", "calendar", AnyView(GigListView(bandId: bandId))),
+            ("Setlists", "music.note.list", AnyView(SetlistView(bandId: bandId))),
+            ("Chat", "message", AnyView(ChatView(bandId: bandId)))
+        ], id: \.0) { title, icon, view in
+            view.tabItem {
+                Label(title, systemImage: icon)
+            }
         }
     }
     

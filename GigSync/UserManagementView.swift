@@ -9,42 +9,44 @@ struct UserManagementView: View {
     @StateObject private var viewModel = UserManagementViewModel()
     @State private var isEditingInviteCode = false
     @State private var newInviteCode = ""
+    @State private var showDeleteConfirmation = false
+    @State private var memberToDelete: BandMember?
     
     var body: some View {
         List {
-            Section("Invite Code") {
-                HStack {
-                    if isEditingInviteCode {
-                        TextField("New Code", text: $newInviteCode)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        Button("Save") {
-                            viewModel.updateInviteCode(bandId: bandId, newCode: newInviteCode)
-                            isEditingInviteCode = false
-                        }
-                    } else {
-                        Text(viewModel.band?.joinCode ?? "Loading...")
-                            .font(.title2)
-                            .bold()
-                            .onAppear {
-                                print("Current join code: \(String(describing: viewModel.band?.joinCode))")
+            if viewModel.isAdmin {
+                Section("Invite Code") {
+                    HStack {
+                        if isEditingInviteCode {
+                            TextField("New Code", text: $newInviteCode)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            Button("Save") {
+                                viewModel.updateInviteCode(bandId: bandId, newCode: newInviteCode)
+                                isEditingInviteCode = false
                             }
-                        Spacer()
-                        HStack {
-                            Button(action: {
-                                if let code = viewModel.band?.joinCode {
-                                    UIPasteboard.general.string = code
-                                    print("Copied code: \(code)")
-                                }
-                            }) {
-                                Image(systemName: "doc.on.doc")
-                            }
+                        } else {
+                            Text(viewModel.band?.joinCode ?? "Loading...")
+                                .font(.title2)
+                                .bold()
                             
-                            if Auth.auth().currentUser?.email == "jackhodgy@thetysms.co.uk" {
+                            Spacer()
+                            
+                            HStack {
                                 Button(action: {
-                                    newInviteCode = viewModel.band?.joinCode ?? ""
-                                    isEditingInviteCode = true
+                                    if let code = viewModel.band?.joinCode {
+                                        UIPasteboard.general.string = code
+                                    }
                                 }) {
-                                    Image(systemName: "pencil")
+                                    Image(systemName: "doc.on.doc")
+                                }
+                                
+                                if viewModel.isAdmin {
+                                    Button(action: {
+                                        newInviteCode = viewModel.band?.joinCode ?? ""
+                                        isEditingInviteCode = true
+                                    }) {
+                                        Image(systemName: "pencil")
+                                    }
                                 }
                             }
                         }
@@ -54,16 +56,31 @@ struct UserManagementView: View {
             
             Section("Members (\(viewModel.bandMembers.count))") {
                 ForEach(viewModel.bandMembers) { member in
-                    UserRowView(member: member) { newRole in
-                        viewModel.updateMemberRole(bandId: bandId, memberId: member.id, newRole: newRole)
-                    }
+                    UserRowView(
+                        member: member,
+                        isAdmin: viewModel.isAdmin,
+                        onRoleChange: { newRole in
+                            viewModel.updateMemberRole(bandId: bandId, memberId: member.id, newRole: newRole)
+                        },
+                        onDelete: {
+                            memberToDelete = member
+                            showDeleteConfirmation = true
+                        }
+                    )
                 }
             }
         }
         .navigationTitle("Manage Members")
         .onAppear {
-            print("View appeared with bandId: \(bandId)")
             viewModel.setupListeners(bandId: bandId)
+        }
+        .alert("Remove Member", isPresented: $showDeleteConfirmation, presenting: memberToDelete) { member in
+            Button("Remove", role: .destructive) {
+                viewModel.removeMember(bandId: bandId, memberId: member.id)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { member in
+            Text("Are you sure you want to remove \(member.name)?")
         }
     }
 }
