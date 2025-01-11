@@ -106,26 +106,18 @@ class BandService {
     func getUserBands(userId: String) async throws -> [Band] {
         print("Fetching bands for user: \(userId)")
         
-        // First, let's directly fetch a band we know exists
-        let bandDoc = try await db.collection("bands")
-            .document("YOUR_KNOWN_BAND_ID")
-            .getDocument()
-        
-        print("Direct band data:")
-        if let data = bandDoc.data() {
-            print("Members structure: \(data["members"] ?? "no members found")")
-        }
-        
-        // Now run the original query
         let snapshot = try await db.collection("bands")
             .whereField("members.\(userId)", isGreaterThan: [:])
             .getDocuments()
         
-        print("Query returned \(snapshot.documents.count) bands")
-        
-        return try snapshot.documents.map { document in
-            try document.data(as: Band.self)
+        let bands = try snapshot.documents.map { document in
+            var band = try document.data(as: Band.self)
+            band.id = document.documentID
+            return band
         }
+        
+        print("Successfully loaded \(bands.count) bands with IDs: \(bands.map { $0.id ?? "none" })")
+        return bands
     }
     
     func deleteEvent(_ eventId: String) async throws {
