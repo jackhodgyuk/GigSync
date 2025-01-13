@@ -1,15 +1,8 @@
-//
-//  Gig.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import Foundation
+import FirebaseFirestore
 
 struct Gig: Identifiable, Codable {
-    let id: String
+    @DocumentID var id: String?
     let title: String
     let date: Date
     let venue: String
@@ -22,5 +15,9 @@ struct Gig: Identifiable, Codable {
         formatter.dateStyle = .long
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, title, date, venue, notes, bandId, setlistId
     }
 }

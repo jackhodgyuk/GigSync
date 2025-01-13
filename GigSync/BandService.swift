@@ -41,9 +41,9 @@ class BandService {
     }
     
     func getBandEvents(bandId: String) async throws -> [GigEvent] {
-        let snapshot = try await db.collection("bands")
-            .document(bandId)
-            .collection("events")
+        let snapshot = try await db.collection("gigs")
+            .whereField("bandId", isEqualTo: bandId)
+            .order(by: "date")
             .getDocuments()
         
         return try snapshot.documents.map { document in
@@ -146,10 +146,7 @@ class BandService {
         bandId: String,
         createdBy: String
     ) async throws {
-        let eventRef = db.collection("bands")
-            .document(bandId)
-            .collection("events")
-            .document()
+        let eventRef = db.collection("gigs").document()
         
         let eventData: [String: Any] = [
             "id": eventRef.documentID,

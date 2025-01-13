@@ -7,7 +7,7 @@ struct MemberDashboardView: View {
     
     var body: some View {
         TabView {
-            GigListView(bandId: bandId)
+            GigListView(bandId: bandId, isAdmin: false)
                 .tabItem {
                     Label("Gigs", systemImage: "calendar")
                 }

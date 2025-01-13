@@ -11,25 +11,30 @@ struct GigManagementView: View {
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(gigs) { gig in
-                    NavigationLink(destination: GigDetailView(gig: gig)) {
-                        GigRowView(gig: gig)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
+            ZStack {
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        ForEach(gigs) { gig in
+                            NavigationLink(destination: GigDetailView(gig: gig, isAdmin: true)) {
+                                GigCard(gig: gig) {
                                     deleteGig(gig)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
                                 }
                             }
+                        }
                     }
+                    .padding()
                 }
             }
-            .navigationTitle("Gigs")
+            .navigationTitle("Upcoming Gigs")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddGig.toggle() }) {
-                        Image(systemName: "plus")
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
                     }
                 }
             }
@@ -37,9 +42,7 @@ struct GigManagementView: View {
                 AddGigView(bandId: bandId)
             }
         }
-        .onAppear {
-            setupGigsListener()
-        }
+        .onAppear { setupGigsListener() }
     }
     
     private func setupGigsListener() {
@@ -55,10 +58,55 @@ struct GigManagementView: View {
     private func deleteGig(_ gig: Gig) {
         Task {
             do {
-                try await db.collection("gigs").document(gig.id).delete()
+                guard let gigId = gig.id else { return }
+                try await db.collection("gigs").document(gigId).delete()
             } catch {
                 print("Error deleting gig: \(error.localizedDescription)")
             }
         }
+    }
+}
+
+struct GigCard: View {
+    let gig: Gig
+    let onDelete: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(gig.title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(gig.venue)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Menu {
+                    Button(role: .destructive, action: onDelete) {
+                        Label("Delete", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(.accentColor)
+                Text(gig.formattedDate)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .shadow(radius: 2)
     }
 }

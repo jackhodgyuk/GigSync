@@ -40,8 +40,10 @@ struct EditGigView: View {
     }
     
     private func saveChanges() {
+        guard let gigId = gig.id else { return }
+        
         let updatedGig = Gig(
-            id: gig.id,
+            id: gigId,
             title: title,
             date: date,
             venue: venue,
@@ -53,7 +55,7 @@ struct EditGigView: View {
         Task {
             let data = try JSONEncoder().encode(updatedGig)
             let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-            try await db.collection("gigs").document(gig.id).setData(dict)
+            try await db.collection("gigs").document(gigId).setData(dict)
             dismiss()
         }
     }
