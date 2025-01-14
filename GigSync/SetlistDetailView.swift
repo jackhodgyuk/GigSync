@@ -50,7 +50,10 @@ struct SetlistDetailView: View {
             }
         }
         .sheet(isPresented: $showingAddSong) {
-            AddSongView { song in
+            AddSongView(
+                setlistId: setlist.id ?? "",
+                bandId: setlist.bandId
+            ) { song in
                 addSong(song)
             }
         }

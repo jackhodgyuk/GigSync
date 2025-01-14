@@ -6,7 +6,10 @@ class SetlistService {
     
     // MARK: - Create
     func createSetlist(name: String, songs: [Song], bandId: String) async throws {
+        let documentRef = db.collection("setlists").document()
+        
         let setlistData: [String: Any] = [
+            "id": documentRef.documentID,  // Add this line
             "name": name,
             "bandId": bandId,
             "songs": songs.map { [
@@ -18,7 +21,7 @@ class SetlistService {
             "createdAt": Date()
         ]
         
-        try await db.collection("setlists").document().setData(setlistData)
+        try await documentRef.setData(setlistData)
     }
     
     // MARK: - Read
@@ -33,27 +36,25 @@ class SetlistService {
     
     // MARK: - Update
     func updateSongOrder(setlistId: String, songs: [Song]) async throws {
+        let songData = songs.map { [
+            "id": $0.id,
+            "title": $0.title,
+            "duration": $0.duration,
+            "order": $0.order
+        ]}
+        
         try await db.collection("setlists").document(setlistId).updateData([
-            "songs": songs.map { [
-                "id": $0.id,
-                "title": $0.title,
-                "duration": $0.duration,
-                "order": $0.order
-            ]}
+            "songs": songData
         ])
     }
     
     func addSong(to setlistId: String, song: Song) async throws {
         let setlistRef = db.collection("setlists").document(setlistId)
-        
-        // Get current document data
         let document = try await setlistRef.getDocument()
         guard let data = document.data() else { return }
         
-        // Get current songs array
         var songs = (data["songs"] as? [[String: Any]]) ?? []
         
-        // Create new song data
         let newSong: [String: Any] = [
             "id": song.id,
             "title": song.title,
@@ -61,10 +62,8 @@ class SetlistService {
             "order": songs.count
         ]
         
-        // Append new song
         songs.append(newSong)
         
-        // Update document with new songs array
         try await setlistRef.updateData([
             "songs": songs
         ])

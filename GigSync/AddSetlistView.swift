@@ -1,11 +1,3 @@
-//
-//  AddSetlistView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 import FirebaseFirestore
 
@@ -42,9 +34,15 @@ struct AddSetlistView: View {
                     .disabled(name.isEmpty || isLoading)
             )
             .sheet(isPresented: $showingAddSong) {
-                AddSongView { song in
-                    songs.append(song)
-                }
+                AddSongView(
+                    setlistId: "",
+                    bandId: bandId,
+                    onSave: { song in
+                        withAnimation {
+                            songs.append(song)
+                        }
+                    }
+                )
             }
         }
     }
@@ -69,11 +67,15 @@ struct AddSetlistView: View {
                     songs: songs,
                     bandId: bandId
                 )
-                isLoading = false
-                dismiss()
+                await MainActor.run {
+                    isLoading = false
+                    dismiss()
+                }
             } catch {
-                isLoading = false
-                // Handle error
+                await MainActor.run {
+                    isLoading = false
+                }
+                print("Error saving setlist: \(error)")
             }
         }
     }

@@ -1,9 +1,6 @@
 import FirebaseFirestore
 import Foundation
 
-// Reference the model from Models directory
-typealias SongModel = GigSync.Song
-
 class SongService {
     static let shared = SongService()
     private let db = Firestore.firestore()
@@ -23,16 +20,16 @@ class SongService {
         return docRef.documentID
     }
     
-    func getSongs(bandId: String) async throws -> [SongModel] {
+    func getSongs(bandId: String) async throws -> [Song] {
         let snapshot = try await db.collection("songs")
             .whereField("bandId", isEqualTo: bandId)
             .order(by: "createdAt", descending: true)
             .getDocuments()
             
-        return snapshot.documents.compactMap { try? $0.data(as: SongModel.self) }
+        return snapshot.documents.compactMap { try? $0.data(as: Song.self) }
     }
     
-    func updateSong(_ song: SongModel) async throws {
+    func updateSong(_ song: Song) async throws {
         try await db.collection("songs").document(song.id).setData([
             "id": song.id,
             "title": song.title,
