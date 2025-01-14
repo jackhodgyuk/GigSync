@@ -1,20 +1,14 @@
-//
-//  Message.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import FirebaseFirestore
 
 struct Message: Identifiable, Codable {
-    @DocumentID var id: String?  // Changed to use DocumentID
-    let content: String
+    @DocumentID var id: String?
+    let content: String?  // Optional for image messages
     let senderId: String
     let senderName: String
     let timestamp: Date
     let bandId: String
+    let type: String?  // Optional for backward compatibility
+    let imageUrl: String?
     
     var formattedTime: String {
         let formatter = DateFormatter()
@@ -29,5 +23,7 @@ struct Message: Identifiable, Codable {
         case senderName
         case timestamp
         case bandId
+        case type
+        case imageUrl
     }
 }

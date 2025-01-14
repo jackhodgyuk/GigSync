@@ -1,11 +1,3 @@
-//
-//  MessageBubble.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 
 struct MessageBubble: View {
@@ -21,11 +13,31 @@ struct MessageBubble: View {
                     .font(.caption)
                     .foregroundColor(.gray)
                 
-                Text(message.content)
-                    .padding(10)
-                    .background(isCurrentUser ? Color.blue : Color.gray.opacity(0.2))
-                    .foregroundColor(isCurrentUser ? .white : .primary)
-                    .cornerRadius(15)
+                Group {
+                    if message.type == "image", let imageUrl = message.imageUrl {
+                        AsyncImage(url: URL(string: imageUrl)) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: 200)
+                            case .failure:
+                                Image(systemName: "photo")
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    } else {
+                        Text(message.content ?? "")
+                    }
+                }
+                .padding(10)
+                .background(isCurrentUser ? Color.blue : Color.gray.opacity(0.2))
+                .foregroundColor(isCurrentUser ? .white : .primary)
+                .cornerRadius(15)
                 
                 Text(message.timestamp.formatted(.relative(presentation: .named)))
                     .font(.caption2)

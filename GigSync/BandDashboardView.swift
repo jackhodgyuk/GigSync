@@ -27,7 +27,7 @@ struct BandDashboardView: View {
             ("Gigs", "calendar", AnyView(GigManagementView(bandId: bandId))),
             ("Setlists", "music.note.list", AnyView(SetlistManagementView(bandId: bandId))),
             ("Finances", "dollarsign.circle", AnyView(FinanceManagementView(bandId: bandId))),
-            ("Chat", "message", AnyView(ChatView(bandId: bandId))),
+            ("Chat", "message", AnyView(ChatView(bandId: bandId, isAdmin: true))),
             ("Members", "person.2", AnyView(UserManagementView(bandId: bandId)))
         ], id: \.0) { title, icon, view in
             view.tabItem {
@@ -40,7 +40,7 @@ struct BandDashboardView: View {
         ForEach([
             ("Gigs", "calendar", AnyView(GigListView(bandId: bandId, isAdmin: false))),
             ("Setlists", "music.note.list", AnyView(SetlistView(bandId: bandId))),
-            ("Chat", "message", AnyView(ChatView(bandId: bandId)))
+            ("Chat", "message", AnyView(ChatView(bandId: bandId, isAdmin: false)))
         ], id: \.0) { title, icon, view in
             view.tabItem {
                 Label(title, systemImage: icon)
