@@ -1,15 +1,8 @@
-//
-//  SetlistDetailView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 import FirebaseFirestore
 
 struct SetlistDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     @State private var setlist: Setlist
     @State private var showingAddSong = false
     @State private var isEditing = false
@@ -30,11 +23,17 @@ struct SetlistDetailView: View {
             }
             
             Section(header: Text("Songs")) {
-                ForEach(setlist.songs) { song in
-                    SongRowView(song: song)
+                if setlist.songs.isEmpty {
+                    Text("Add your first song")
+                        .foregroundColor(.secondary)
+                        .italic()
+                } else {
+                    ForEach(setlist.songs) { song in
+                        SongRowView(song: song)
+                    }
+                    .onMove(perform: moveSongs)
+                    .onDelete(perform: deleteSong)
                 }
-                .onMove(perform: moveSongs)
-                .onDelete(perform: deleteSong)
             }
         }
         .navigationTitle(setlist.name)
@@ -45,12 +44,29 @@ struct SetlistDetailView: View {
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                EditButton()
+                if !setlist.songs.isEmpty {
+                    EditButton()
+                }
             }
         }
         .sheet(isPresented: $showingAddSong) {
             AddSongView { song in
                 addSong(song)
+            }
+        }
+        .onAppear {
+            setupSetlistListener()
+        }
+        .onChange(of: setlist.songs.isEmpty) { oldValue, newValue in
+            if newValue {
+                Task {
+                    if let id = setlist.id {
+                        try? await Firestore.firestore().collection("setlists").document(id).delete()
+                        await MainActor.run {
+                            dismiss()
+                        }
+                    }
+                }
             }
         }
     }
@@ -64,28 +80,51 @@ struct SetlistDetailView: View {
         }
         
         Task {
-            try? await SetlistService.shared.updateSongOrder(
-                setlistId: setlist.id,
-                songs: updatedSongs
-            )
+            if let id = setlist.id {
+                try? await SetlistService.shared.updateSongOrder(
+                    setlistId: id,
+                    songs: updatedSongs
+                )
+            }
         }
     }
     
     private func deleteSong(at offsets: IndexSet) {
         Task {
-            try? await SetlistService.shared.removeSongs(
-                from: setlist.id,
-                at: offsets
-            )
+            if let id = setlist.id {
+                try? await SetlistService.shared.removeSongs(
+                    from: id,
+                    at: offsets
+                )
+            }
         }
     }
     
     private func addSong(_ song: Song) {
         Task {
-            try? await SetlistService.shared.addSong(
-                to: setlist.id,
-                song: song
-            )
+            if let id = setlist.id {
+                try? await SetlistService.shared.addSong(
+                    to: id,
+                    song: song
+                )
+            }
         }
+    }
+    
+    private func setupSetlistListener() {
+        guard let setlistId = setlist.id, !setlistId.isEmpty else { return }
+        
+        Firestore.firestore().collection("setlists")
+            .document(setlistId)
+            .addSnapshotListener { snapshot, error in
+                guard let document = snapshot else { return }
+                if let updatedSetlist = try? document.data(as: Setlist.self) {
+                    Task { @MainActor in
+                        withAnimation {
+                            setlist = updatedSetlist
+                        }
+                    }
+                }
+            }
     }
 }

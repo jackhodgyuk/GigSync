@@ -47,7 +47,9 @@ struct SetlistView: View {
         Task {
             for index in offsets {
                 let setlist = setlists[index]
-                try? await db.collection("setlists").document(setlist.id).delete()
+                if let id = setlist.id {
+                    try? await db.collection("setlists").document(id).delete()
+                }
             }
         }
     }

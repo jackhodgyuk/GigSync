@@ -42,8 +42,19 @@ struct SetlistManagementView: View {
             .whereField("bandId", isEqualTo: bandId)
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { snapshot, error in
-                guard let documents = snapshot?.documents else { return }
-                setlists = documents.compactMap { try? $0.data(as: Setlist.self) }
+                guard let documents = snapshot?.documents else {
+                    print("No setlist documents found")
+                    return
+                }
+                
+                setlists = documents.compactMap { document in
+                    if let setlist = try? document.data(as: Setlist.self) {
+                        print("Loaded setlist: \(setlist.name) with \(setlist.songs.count) songs")
+                        return setlist
+                    }
+                    return nil
+                }
+                print("Total setlists loaded: \(setlists.count)")
             }
     }
     

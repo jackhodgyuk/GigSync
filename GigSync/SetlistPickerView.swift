@@ -18,7 +18,11 @@ struct SetlistPickerView: View {
                         SetlistRow(
                             setlist: setlist,
                             isSelected: selectedSetlistId == setlist.id,
-                            onSelect: { assignSetlist(setlist.id) }
+                            onSelect: {
+                                if let id = setlist.id {
+                                    assignSetlist(id)
+                                }
+                            }
                         )
                     }
                 }

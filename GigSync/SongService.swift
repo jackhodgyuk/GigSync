@@ -1,12 +1,8 @@
-//
-//  SongService.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import FirebaseFirestore
+import Foundation
+
+// Reference the model from Models directory
+typealias SongModel = GigSync.Song
 
 class SongService {
     static let shared = SongService()
@@ -19,6 +15,7 @@ class SongService {
             "duration": duration,
             "key": key as Any,
             "bandId": bandId,
+            "order": 0,
             "createdAt": Date()
         ]
         
@@ -26,17 +23,22 @@ class SongService {
         return docRef.documentID
     }
     
-    func getSongs(bandId: String) async throws -> [Song] {
+    func getSongs(bandId: String) async throws -> [SongModel] {
         let snapshot = try await db.collection("songs")
             .whereField("bandId", isEqualTo: bandId)
             .order(by: "createdAt", descending: true)
             .getDocuments()
             
-        return snapshot.documents.compactMap { try? $0.data(as: Song.self) }
+        return snapshot.documents.compactMap { try? $0.data(as: SongModel.self) }
     }
     
-    func updateSong(_ song: Song) throws {
-        try db.collection("songs").document(song.id).setData(from: song)
+    func updateSong(_ song: SongModel) async throws {
+        try await db.collection("songs").document(song.id).setData([
+            "id": song.id,
+            "title": song.title,
+            "duration": song.duration,
+            "order": song.order
+        ], merge: true)
     }
     
     func deleteSong(_ songId: String) async throws {
