@@ -25,6 +25,35 @@ class GigService {
         let docRef = db.collection("gigs").document()
         try await docRef.setData(gigData)
         print("Created gig with ID: \(docRef.documentID)")
+        
+        // Fetch band members' emails and send notifications
+        let bandDoc = try await db.collection("bands").document(bandId).getDocument()
+        print("DEBUG: Retrieved band document")
+        
+        if let members = bandDoc.data()?["members"] as? [String: Any] {
+            let memberIds = Array(members.keys)
+            print("DEBUG: Found member IDs: \(memberIds)")
+            
+            let userDocs = try await db.collection("users")
+                .whereField(FieldPath.documentID(), in: memberIds)
+                .getDocuments()
+            
+            let memberEmails = userDocs.documents.compactMap { $0.data()["email"] as? String }
+            print("DEBUG: Sending emails to: \(memberEmails)")
+            
+            let gig = Gig(id: docRef.documentID,
+                         title: title,
+                         date: date,
+                         venue: venue,
+                         notes: notes,
+                         bandId: bandId,
+                         setlistId: setlistId)
+            
+            EmailService.sendGigNotification(gig: gig, to: memberEmails)
+            print("DEBUG: Email notification triggered")
+        } else {
+            print("DEBUG: No members found in band document")
+        }
     }
     
     func fetchGigs(for bandId: String) async throws -> [Gig] {

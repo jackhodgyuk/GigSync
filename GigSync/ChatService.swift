@@ -1,11 +1,3 @@
-//
-//  ChatService.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import FirebaseFirestore
 
 class ChatService {
@@ -21,11 +13,11 @@ class ChatService {
             "content": content,
             "senderId": senderId,
             "senderName": senderName,
-            "timestamp": Date(),
+            "timestamp": Timestamp(date: Date()),
             "bandId": bandId
         ]
         
-        try await db.collection("messages").document().setData(messageData)
+        try await db.collection("messages").addDocument(data: messageData)
     }
     
     func deleteMessage(_ messageId: String) async throws {

@@ -2,44 +2,6 @@ import SwiftUI
 import FirebaseFirestore
 import FirebaseAuth
 
-struct ChatMessage: Identifiable, Codable, Equatable {
-    let id: String
-    let content: String
-    let senderId: String
-    let timestamp: Date
-    let bandId: String
-    
-    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-struct MessageBubbleView: View {
-    let message: ChatMessage
-    
-    var body: some View {
-        HStack {
-            if isCurrentUser {
-                Spacer()
-            }
-            
-            Text(message.content)
-                .padding()
-                .background(isCurrentUser ? Color.blue : Color.gray.opacity(0.2))
-                .foregroundColor(isCurrentUser ? .white : .primary)
-                .cornerRadius(20)
-            
-            if !isCurrentUser {
-                Spacer()
-            }
-        }
-    }
-    
-    private var isCurrentUser: Bool {
-        message.senderId == Auth.auth().currentUser?.uid
-    }
-}
-
 struct ChatView: View {
     @State private var messages: [ChatMessage] = []
     @State private var newMessage = ""
