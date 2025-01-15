@@ -34,15 +34,11 @@ struct AddSetlistView: View {
                     .disabled(name.isEmpty || isLoading)
             )
             .sheet(isPresented: $showingAddSong) {
-                AddSongView(
-                    setlistId: "",
-                    bandId: bandId,
-                    onSave: { song in
-                        withAnimation {
-                            songs.append(song)
-                        }
+                AddSongView { song in
+                    withAnimation {
+                        songs.append(song)
                     }
-                )
+                }
             }
         }
     }
@@ -62,20 +58,21 @@ struct AddSetlistView: View {
         isLoading = true
         Task {
             do {
-                try await SetlistService.shared.createSetlist(
+                let documentId = try await SetlistService.shared.createSetlist(
                     name: name,
                     songs: songs,
                     bandId: bandId
                 )
+                print("Created setlist with ID: \(documentId)")
                 await MainActor.run {
                     isLoading = false
                     dismiss()
                 }
             } catch {
+                print("Error saving setlist: \(error)")
                 await MainActor.run {
                     isLoading = false
                 }
-                print("Error saving setlist: \(error)")
             }
         }
     }

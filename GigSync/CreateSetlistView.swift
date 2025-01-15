@@ -1,10 +1,11 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct CreateSetlistView: View {
     @Environment(\.dismiss) var dismiss
     @State private var name = ""
-    @State private var selectedSongs: [Song] = []
-    @State private var availableSongs: [Song] = []
+    @State private var selectedSongs: Set<String> = []
+    @State private var songs: [Song] = []
     @State private var isLoading = false
     let eventId: String
     let bandId: String
@@ -16,16 +17,18 @@ struct CreateSetlistView: View {
                     TextField("Setlist Name", text: $name)
                 }
                 
-                Section(
-                    header: Text("Songs"),
-                    footer: Text("\(selectedSongs.count) songs selected")
-                ) {
-                    ForEach(availableSongs) { song in
-                        SongSelectionRow(
-                            song: song,
-                            isSelected: selectedSongs.contains { $0.id == song.id }
-                        ) {
-                            toggleSong(song)
+                Section(header: Text("Select Songs")) {
+                    if songs.isEmpty {
+                        Text("No songs available")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(songs) { song in
+                            SongSelectionRow(
+                                song: song,
+                                isSelected: selectedSongs.contains(song.id)
+                            ) {
+                                toggleSongSelection(song.id)
+                            }
                         }
                     }
                 }
@@ -33,42 +36,61 @@ struct CreateSetlistView: View {
             .navigationTitle("Create Setlist")
             .navigationBarItems(
                 leading: Button("Cancel") { dismiss() },
-                trailing: Button("Save") { saveSetlist() }
+                trailing: Button("Create") { createSetlist() }
                     .disabled(name.isEmpty || selectedSongs.isEmpty || isLoading)
             )
             .onAppear {
-                loadAvailableSongs()
+                loadSongs()
             }
         }
     }
     
-    private func toggleSong(_ song: Song) {
-        if let index = selectedSongs.firstIndex(where: { $0.id == song.id }) {
-            selectedSongs.remove(at: index)
-        } else {
-            selectedSongs.append(song)
-        }
-    }
-    
-    private func loadAvailableSongs() {
+    private func loadSongs() {
         Task {
-            availableSongs = try await SongService.shared.getSongs(bandId: bandId)
+            if let bandSongs = try? await SongService.shared.getSongs(bandId: bandId) {
+                await MainActor.run {
+                    songs = bandSongs
+                }
+            }
         }
     }
     
-    private func saveSetlist() {
+    private func toggleSongSelection(_ songId: String) {
+        if selectedSongs.contains(songId) {
+            selectedSongs.remove(songId)
+        } else {
+            selectedSongs.insert(songId)
+        }
+    }
+    
+    private func createSetlist() {
         isLoading = true
+        let selectedSongsList = songs.filter { selectedSongs.contains($0.id) }
+            .enumerated()
+            .map { index, song in
+                Song(id: song.id, title: song.title, duration: song.duration, order: index)
+            }
+        
         Task {
             do {
-                try await SetlistService.shared.createSetlist(
+                let setlistId = try await SetlistService.shared.createSetlist(
                     name: name,
-                    songs: selectedSongs,
+                    songs: selectedSongsList,
                     bandId: bandId
                 )
-                isLoading = false
-                dismiss()
+                
+                if !eventId.isEmpty {
+                    try await BandService.shared.assignSetlist(setlistId, to: eventId)
+                }
+                
+                await MainActor.run {
+                    isLoading = false
+                    dismiss()
+                }
             } catch {
-                isLoading = false
+                await MainActor.run {
+                    isLoading = false
+                }
             }
         }
     }

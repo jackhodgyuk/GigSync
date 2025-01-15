@@ -1,12 +1,9 @@
 import SwiftUI
 import FirebaseFirestore
 
-struct SetlistView: View {
+struct MemberSetlistView: View {
     let bandId: String
     @State private var setlists: [Setlist] = []
-    @State private var showingAddSetlist = false
-    
-    private let db = Firestore.firestore()
     
     var body: some View {
         List {
@@ -28,7 +25,7 @@ struct SetlistView: View {
                 }
             } else {
                 ForEach(setlists) { setlist in
-                    NavigationLink(destination: SetlistDetailView(setlist: setlist, isAdmin: false)) {
+                    NavigationLink(destination: MemberSetlistDetailView(setlist: setlist)) {
                         HStack {
                             Image(systemName: "music.note.list")
                                 .foregroundColor(.blue)
@@ -52,25 +49,16 @@ struct SetlistView: View {
                         .padding(.vertical, 4)
                     }
                 }
-                .onDelete(perform: deleteSetlist)
             }
         }
         .navigationTitle("Setlists")
-        .toolbar {
-            Button(action: { showingAddSetlist.toggle() }) {
-                Image(systemName: "plus")
-            }
-        }
-        .sheet(isPresented: $showingAddSetlist) {
-            CreateSetlistView(eventId: "", bandId: bandId)
-        }
         .onAppear {
             setupSetlistsListener()
         }
     }
     
     private func setupSetlistsListener() {
-        db.collection("setlists")
+        Firestore.firestore().collection("setlists")
             .whereField("bandId", isEqualTo: bandId)
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { snapshot, error in
@@ -78,15 +66,66 @@ struct SetlistView: View {
                 setlists = documents.compactMap { try? $0.data(as: Setlist.self) }
             }
     }
+}
+
+struct MemberSetlistDetailView: View {
+    let setlist: Setlist
     
-    private func deleteSetlist(at offsets: IndexSet) {
-        Task {
-            for index in offsets {
-                let setlist = setlists[index]
-                if let id = setlist.id {
-                    try? await db.collection("setlists").document(id).delete()
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 16) {
+                    HStack {
+                        Image(systemName: "clock")
+                            .foregroundColor(.blue)
+                            .imageScale(.large)
+                        Text("\(setlist.duration) minutes")
+                            .font(.headline)
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                    
+                    if !setlist.songs.isEmpty {
+                        HStack {
+                            Image(systemName: "music.note.list")
+                                .foregroundColor(.blue)
+                                .imageScale(.large)
+                            Text("\(setlist.songs.count) songs")
+                                .font(.headline)
+                            Spacer()
+                        }
+                    }
                 }
+                .listRowBackground(Color.clear)
+            }
+            
+            Section {
+                if setlist.songs.isEmpty {
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 12) {
+                            Image(systemName: "music.note")
+                                .font(.system(size: 40))
+                                .foregroundColor(.blue)
+                            Text("No songs in this setlist")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                } else {
+                    ForEach(setlist.songs) { song in
+                        SongRowView(song: song)
+                            .transition(.slide)
+                    }
+                }
+            } header: {
+                Text("Songs")
+                    .font(.headline)
             }
         }
+        .navigationTitle(setlist.name)
+        .animation(.easeInOut, value: setlist.songs)
     }
 }

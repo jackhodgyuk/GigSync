@@ -6,72 +6,98 @@ struct SetlistDetailView: View {
     @State private var setlist: Setlist
     @State private var showingAddSong = false
     @State private var isEditing = false
+    private let documentId: String
+    let isAdmin: Bool
     
-    init(setlist: Setlist) {
+    init(setlist: Setlist, isAdmin: Bool) {
         _setlist = State(initialValue: setlist)
+        self.documentId = setlist.id ?? ""
+        self.isAdmin = isAdmin
+        print("📝 Initializing SetlistDetailView with setlist: \(setlist.name) [DocumentID: \(documentId)]")
     }
     
     var body: some View {
         List {
-            Section(header: Text("Details")) {
-                HStack {
-                    Text("Total Duration:")
-                    Spacer()
-                    Text("\(setlist.duration) minutes")
-                        .foregroundColor(.secondary)
+            Section {
+                VStack(spacing: 16) {
+                    HStack {
+                        Image(systemName: "clock")
+                            .foregroundColor(.blue)
+                            .imageScale(.large)
+                        Text("\(setlist.duration) minutes")
+                            .font(.headline)
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                    
+                    if !setlist.songs.isEmpty {
+                        HStack {
+                            Image(systemName: "music.note.list")
+                                .foregroundColor(.blue)
+                                .imageScale(.large)
+                            Text("\(setlist.songs.count) songs")
+                                .font(.headline)
+                            Spacer()
+                        }
+                    }
                 }
+                .listRowBackground(Color.clear)
             }
             
-            Section(header: Text("Songs")) {
+            Section {
                 if setlist.songs.isEmpty {
-                    Text("Add your first song")
-                        .foregroundColor(.secondary)
-                        .italic()
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 12) {
+                            Image(systemName: "music.note")
+                                .font(.system(size: 40))
+                                .foregroundColor(.blue)
+                            Text("No songs added yet")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
                 } else {
                     ForEach(setlist.songs) { song in
                         SongRowView(song: song)
+                            .transition(.slide)
                     }
-                    .onMove(perform: moveSongs)
-                    .onDelete(perform: deleteSong)
+                    .onMove(perform: isAdmin ? moveSongs : nil)
+                    .onDelete(perform: isAdmin ? deleteSong : nil)
+                }
+            } header: {
+                HStack {
+                    Text("Songs")
+                        .font(.headline)
+                    Spacer()
+                    if isAdmin {
+                        Button(action: { showingAddSong.toggle() }) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.blue)
+                        }
+                    }
                 }
             }
         }
         .navigationTitle(setlist.name)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingAddSong.toggle() }) {
-                    Image(systemName: "plus")
-                }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if !setlist.songs.isEmpty {
+            if isAdmin && !setlist.songs.isEmpty {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     EditButton()
                 }
             }
         }
         .sheet(isPresented: $showingAddSong) {
-            AddSongView(
-                setlistId: setlist.id ?? "",
-                bandId: setlist.bandId
-            ) { song in
+            AddSongView { song in
                 addSong(song)
             }
         }
         .onAppear {
             setupSetlistListener()
         }
-        .onChange(of: setlist.songs.isEmpty) { oldValue, newValue in
-            if newValue {
-                Task {
-                    if let id = setlist.id {
-                        try? await Firestore.firestore().collection("setlists").document(id).delete()
-                        await MainActor.run {
-                            dismiss()
-                        }
-                    }
-                }
-            }
-        }
+        .animation(.easeInOut, value: setlist.songs)
     }
     
     private func moveSongs(from source: IndexSet, to destination: Int) {
@@ -83,51 +109,47 @@ struct SetlistDetailView: View {
         }
         
         Task {
-            if let id = setlist.id {
-                try? await SetlistService.shared.updateSongOrder(
-                    setlistId: id,
-                    songs: updatedSongs
-                )
-            }
+            try? await SetlistService.shared.updateSongOrder(
+                setlistId: documentId,
+                songs: updatedSongs
+            )
         }
     }
     
     private func deleteSong(at offsets: IndexSet) {
         Task {
-            if let id = setlist.id {
-                try? await SetlistService.shared.removeSongs(
-                    from: id,
-                    at: offsets
-                )
-            }
+            try? await SetlistService.shared.removeSongs(
+                from: documentId,
+                at: offsets
+            )
         }
     }
     
     private func addSong(_ song: Song) {
+        guard !documentId.isEmpty else { return }
         Task {
-            if let id = setlist.id {
-                try? await SetlistService.shared.addSong(
-                    to: id,
-                    song: song
-                )
-            }
+            try? await SetlistService.shared.addSong(
+                to: documentId,
+                song: song
+            )
         }
     }
     
     private func setupSetlistListener() {
-        guard let setlistId = setlist.id, !setlistId.isEmpty else { return }
+        guard !documentId.isEmpty else { return }
         
-        Firestore.firestore().collection("setlists")
-            .document(setlistId)
-            .addSnapshotListener { snapshot, error in
-                guard let document = snapshot else { return }
-                if let updatedSetlist = try? document.data(as: Setlist.self) {
-                    Task { @MainActor in
-                        withAnimation {
-                            setlist = updatedSetlist
-                        }
-                    }
+        let setlistRef = Firestore.firestore().collection("setlists").document(documentId)
+        
+        setlistRef.addSnapshotListener { snapshot, error in
+            guard let document = snapshot,
+                  let updatedSetlist = try? document.data(as: Setlist.self)
+            else { return }
+            
+            Task { @MainActor in
+                withAnimation(.easeInOut) {
+                    setlist = updatedSetlist
                 }
             }
+        }
     }
 }

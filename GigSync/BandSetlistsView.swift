@@ -8,7 +8,7 @@ struct BandSetlistsView: View {
     var body: some View {
         List {
             ForEach(setlists) { setlist in
-                NavigationLink(destination: SetlistDetailView(setlist: setlist)) {
+                NavigationLink(destination: SetlistDetailView(setlist: setlist, isAdmin: true)) {
                     VStack(alignment: .leading) {
                         Text(setlist.name)
                             .font(.headline)

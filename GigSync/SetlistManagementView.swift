@@ -5,26 +5,63 @@ struct SetlistManagementView: View {
     @State private var setlists: [Setlist] = []
     @State private var showingAddSetlist = false
     let bandId: String
+    let isAdmin: Bool = true
     
     var body: some View {
         NavigationView {
             List {
-                ForEach(setlists) { setlist in
-                    NavigationLink(destination: SetlistDetailView(setlist: setlist)) {
-                        SetlistRowView(
-                            setlist: setlist,
-                            isSelected: false,
-                            action: {}
-                        )
+                if setlists.isEmpty {
+                    Section {
+                        HStack {
+                            Spacer()
+                            VStack(spacing: 12) {
+                                Image(systemName: "music.note.list")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.blue)
+                                Text("Create your first setlist")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(.vertical, 20)
                     }
+                } else {
+                    ForEach(setlists) { setlist in
+                        NavigationLink(destination: SetlistDetailView(setlist: setlist, isAdmin: true)) {
+                            HStack {
+                                Image(systemName: "music.note.list")
+                                    .foregroundColor(.blue)
+                                    .imageScale(.large)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(setlist.name)
+                                        .font(.headline)
+                                    HStack {
+                                        Image(systemName: "music.note")
+                                            .imageScale(.small)
+                                        Text("\(setlist.songs.count) songs")
+                                        Image(systemName: "clock")
+                                            .imageScale(.small)
+                                        Text("\(setlist.duration) min")
+                                    }
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .onDelete(perform: deleteSetlist)
                 }
-                .onDelete(perform: deleteSetlist)
             }
             .navigationTitle("Setlists")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddSetlist.toggle() }) {
-                        Image(systemName: "plus")
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.blue)
+                            .imageScale(.large)
                     }
                 }
             }
@@ -42,23 +79,21 @@ struct SetlistManagementView: View {
             .whereField("bandId", isEqualTo: bandId)
             .order(by: "createdAt", descending: true)
             .addSnapshotListener { snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    print("No setlist documents found")
-                    return
-                }
+                guard let documents = snapshot?.documents else { return }
                 
                 setlists = documents.compactMap { document in
-                    if let setlist = try? document.data(as: Setlist.self) {
-                        print("Loaded setlist: \(setlist.name) with \(setlist.songs.count) songs")
-                        return setlist
-                    }
-                    return nil
+                    try? document.data(as: Setlist.self)
                 }
-                print("Total setlists loaded: \(setlists.count)")
             }
     }
     
     private func deleteSetlist(at offsets: IndexSet) {
-        // Firebase deletion implementation coming next
+        Task {
+            for index in offsets {
+                if let id = setlists[index].id {
+                    try? await SetlistService.shared.deleteSetlist(id)
+                }
+            }
+        }
     }
 }

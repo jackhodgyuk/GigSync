@@ -12,7 +12,7 @@ struct MemberDashboardView: View {
                     Label("Gigs", systemImage: "calendar")
                 }
             
-            SetlistView(bandId: bandId)
+            MemberSetlistView(bandId: bandId)
                 .tabItem {
                     Label("Setlists", systemImage: "music.note.list")
                 }

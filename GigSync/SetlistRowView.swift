@@ -1,11 +1,3 @@
-//
-//  SetlistRowView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 
 struct SetlistRowView: View {

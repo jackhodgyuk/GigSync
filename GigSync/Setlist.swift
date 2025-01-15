@@ -20,22 +20,30 @@ struct Setlist: Identifiable, Codable {
         case createdAt
     }
     
+    init(id: String? = nil, name: String, bandId: String, songs: [Song] = [], createdAt: Timestamp? = nil) {
+        self.id = id
+        self.name = name
+        self.bandId = bandId
+        self.songs = songs
+        self.createdAt = createdAt
+    }
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decodeIfPresent(String.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        bandId = try container.decode(String.self, forKey: .bandId)
-        songs = try container.decode([Song].self, forKey: .songs)
-        createdAt = try container.decode(Timestamp.self, forKey: .createdAt)
+        self.id = try container.decodeIfPresent(String.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.bandId = try container.decode(String.self, forKey: .bandId)
+        self.songs = try container.decode([Song].self, forKey: .songs)
+        self.createdAt = try container.decodeIfPresent(Timestamp.self, forKey: .createdAt)
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(id, forKey: .id)
         try container.encode(name, forKey: .name)
         try container.encode(bandId, forKey: .bandId)
         try container.encode(songs, forKey: .songs)
-        try container.encode(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
     }
 }
 

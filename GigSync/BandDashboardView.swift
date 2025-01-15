@@ -39,7 +39,7 @@ struct BandDashboardView: View {
     private func memberTabs(bandId: String) -> some View {
         ForEach([
             ("Gigs", "calendar", AnyView(GigListView(bandId: bandId, isAdmin: false))),
-            ("Setlists", "music.note.list", AnyView(SetlistView(bandId: bandId))),
+            ("Setlists", "music.note.list", AnyView(MemberSetlistView(bandId: bandId))),
             ("Chat", "message", AnyView(ChatView(bandId: bandId, isAdmin: false)))
         ], id: \.0) { title, icon, view in
             view.tabItem {
