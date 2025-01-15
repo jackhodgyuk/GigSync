@@ -1,11 +1,3 @@
-//
-//  FinanceService.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import FirebaseFirestore
 
 class FinanceService {
@@ -20,36 +12,48 @@ class FinanceService {
         bandId: String,
         addedBy: String
     ) async throws {
-        let transactionData: [String: Any] = [
-            "description": description,
-            "amount": amount,
-            "category": category.rawValue,
-            "date": date,
-            "bandId": bandId,
-            "addedBy": addedBy,
-            "createdAt": Date()
-        ]
+        let id = UUID().uuidString
+        let finance = Finance(
+            id: id,
+            description: description,
+            amount: amount,
+            date: date,
+            category: category,
+            bandId: bandId,
+            addedBy: addedBy
+        )
         
-        try await db.collection("finances").document().setData(transactionData)
+        try await db.collection("finances").document(id).setData([
+            "id": finance.id,
+            "description": finance.description,
+            "amount": finance.amount,
+            "date": finance.date,
+            "category": finance.category.rawValue,
+            "bandId": finance.bandId,
+            "addedBy": finance.addedBy,
+            "createdAt": Date()
+        ])
     }
     
-    func getTransactionSummary(bandId: String) async throws -> [String: Double] {
+    func getTransactions(bandId: String) async throws -> [Finance] {
         let snapshot = try await db.collection("finances")
             .whereField("bandId", isEqualTo: bandId)
+            .order(by: "date", descending: true)
             .getDocuments()
-        
-        var summary: [String: Double] = [:]
-        
-        for document in snapshot.documents {
-            guard let transaction = try? document.data(as: Finance.self) else { continue }
-            let categoryKey = transaction.category.rawValue
-            summary[categoryKey, default: 0] += transaction.amount
-        }
-        
-        return summary
+            
+        return snapshot.documents.compactMap { try? $0.data(as: Finance.self) }
     }
     
     func deleteTransaction(_ transactionId: String) async throws {
         try await db.collection("finances").document(transactionId).delete()
+    }
+    
+    func getTransactionSummary(bandId: String) async throws -> [String: Double] {
+        let transactions = try await getTransactions(bandId: bandId)
+        
+        return Dictionary(grouping: transactions, by: { $0.category.rawValue })
+            .mapValues { transactions in
+                transactions.reduce(0) { $0 + $1.amount }
+            }
     }
 }

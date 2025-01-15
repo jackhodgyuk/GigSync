@@ -20,7 +20,7 @@ class BandInviteService {
     
     func validateInviteCode(_ code: String) async throws -> String {
         let snapshot = try await db.collection("bands")
-            .whereField("inviteCode", isEqualTo: code)
+            .whereField("joinCode", isEqualTo: code)
             .getDocuments()
         
         guard let bandDoc = snapshot.documents.first else {
@@ -33,7 +33,7 @@ class BandInviteService {
     func refreshInviteCode(bandId: String) async throws -> String {
         let newCode = generateInviteCode()
         try await db.collection("bands").document(bandId).updateData([
-            "inviteCode": newCode
+            "joinCode": newCode
         ])
         return newCode
     }

@@ -4,6 +4,7 @@ import FirebaseAuth
 struct BandDashboardView: View {
     let band: Band
     @State private var userRole: BandRole = .member
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         TabView {
@@ -16,6 +17,19 @@ struct BandDashboardView: View {
             }
         }
         .navigationTitle(band.name)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                        Text("Bands")
+                    }
+                }
+            }
+        }
         .onAppear {
             loadUserRole()
             print("Band Dashboard loaded with ID: \(band.id ?? "none")")

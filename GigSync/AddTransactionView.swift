@@ -5,25 +5,27 @@ import FirebaseFirestore
 struct AddTransactionView: View {
     @Environment(\.dismiss) var dismiss
     let bandId: String
-    private let db = Firestore.firestore()
     
     @State private var amount = ""
     @State private var description = ""
-    @State private var category: Transaction.TransactionCategory = .expense
+    @State private var category: Finance.Category = .expense
     @State private var date = Date()
     
     var body: some View {
         NavigationView {
             Form {
-                Section("Transaction Details") {
+                Section {
                     TextField("Amount", text: $amount)
                         .keyboardType(.decimalPad)
+                        .font(.system(size: 20, weight: .bold))
                     
                     TextField("Description", text: $description)
+                        .textInputAutocapitalization(.sentences)
                     
                     Picker("Category", selection: $category) {
-                        ForEach(Transaction.TransactionCategory.allCases, id: \.self) { category in
-                            Text(category.rawValue).tag(category)
+                        ForEach(Finance.Category.allCases, id: \.self) { category in
+                            Label(category.rawValue, systemImage: categoryIcon(for: category))
+                                .tag(category)
                         }
                     }
                     
@@ -37,6 +39,7 @@ struct AddTransactionView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save", action: saveTransaction)
+                        .bold()
                         .disabled(amount.isEmpty || description.isEmpty)
                 }
             }
@@ -47,25 +50,26 @@ struct AddTransactionView: View {
         guard let userId = Auth.auth().currentUser?.uid,
               let amountDouble = Double(amount) else { return }
         
-        let transaction = Transaction(
-            id: UUID().uuidString,
-            amount: amountDouble,
-            description: description,
-            category: category,
-            date: date,
-            bandId: bandId,
-            createdBy: userId
-        )
-        
         Task {
-            let data = try JSONEncoder().encode(transaction)
-            let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-            try await db.collection("transactions").document(transaction.id).setData(dict)
+            try? await FinanceService.shared.addTransaction(
+                description: description,
+                amount: amountDouble,
+                category: category,
+                date: date,
+                bandId: bandId,
+                addedBy: userId
+            )
             dismiss()
         }
     }
-}
-
-enum TransactionError: Error {
-    case invalidInput
+    
+    private func categoryIcon(for category: Finance.Category) -> String {
+        switch category {
+        case .income: return "arrow.down.circle.fill"
+        case .expense: return "arrow.up.circle.fill"
+        case .equipment: return "guitars.fill"
+        case .travel: return "car.fill"
+        case .other: return "ellipsis.circle.fill"
+        }
+    }
 }

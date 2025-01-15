@@ -1,11 +1,3 @@
-//
-//  BandDetailView.swift
-//  GigSync
-//
-//  Created by Jack Hodgy on 08/01/2025.
-//
-
-
 import SwiftUI
 import FirebaseAuth
 
@@ -44,5 +36,6 @@ struct BandDetailView: View {
             }
         }
         .navigationTitle(band.name)
+        .navigationBarBackButtonHidden(true)
     }
 }
