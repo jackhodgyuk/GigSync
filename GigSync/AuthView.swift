@@ -16,6 +16,8 @@ struct AuthView: View {
     @State private var shouldNavigate = false
     @State private var rememberMe = false
     @State private var showUserProfile = false
+    @State private var showCreateBand = false
+    @State private var showJoinBand = false
     
     let completion: (Bool) -> Void
     
@@ -56,11 +58,17 @@ struct AuthView: View {
                     .navigationBarBackButtonHidden(isLoading)
                     .navigationDestination(isPresented: $shouldNavigate) {
                         if isSignUp {
-                            BandSetupView()
+                            BandSetupView(showCreateBand: $showCreateBand, showJoinBand: $showJoinBand)
                         }
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showCreateBand) {
+            CreateBandView()
+        }
+        .sheet(isPresented: $showJoinBand) {
+            JoinBandView()
         }
         .onAppear {
             if !isSignUp && authManager.rememberLogin {

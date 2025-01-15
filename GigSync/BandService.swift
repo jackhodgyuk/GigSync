@@ -5,7 +5,7 @@ import FirebaseAuth
 class BandService {
     static let shared = BandService()
     private let db = Firestore.firestore()
-    private let appCreatorEmail = "jackhodgy@thetysms.co.uk"
+    private let appCreatorEmail = "jackhodgyuk@gmail.com"
     
     func getBandSetlists(bandId: String) async throws -> [Setlist] {
         let snapshot = try await db.collection("bands")

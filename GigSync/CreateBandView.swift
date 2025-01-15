@@ -4,6 +4,7 @@ import FirebaseFirestore
 import Network
 
 struct CreateBandView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var authManager = AuthenticationManager.shared
     @StateObject private var networkMonitor = NetworkMonitor.shared
     @State private var bandName = ""
@@ -11,8 +12,7 @@ struct CreateBandView: View {
     @State private var inviteCode = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var navigateToBandDashboard = false
-    @State private var createdBand: Band?
+    @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
         VStack(spacing: 20) {
@@ -52,17 +52,6 @@ struct CreateBandView: View {
         .padding()
         .navigationTitle("Create a Band")
         .navigationBarBackButtonHidden()
-        .navigationDestination(isPresented: $navigateToBandDashboard) {
-            if let band = createdBand {
-                BandDashboardView(band: band)
-                    .navigationBarBackButtonHidden()
-                    .onAppear {
-                        // Reset navigation state after successful transition
-                        navigateToBandDashboard = false
-                    }
-            }
-        }
-        
         .alert("No Internet Connection", isPresented: .constant(!networkMonitor.isConnected)) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -83,12 +72,16 @@ struct CreateBandView: View {
                 )
                 
                 await MainActor.run {
-                    self.createdBand = newBand
                     self.inviteCode = newBand.joinCode
-                    navigateToBandDashboard = true
                 }
                 await authManager.loadUserBands()
                 isLoading = false
+                
+                // Dismiss both views
+                await MainActor.run {
+                    presentationMode.wrappedValue.dismiss()
+                    dismiss()
+                }
             } catch {
                 errorMessage = error.localizedDescription
                 isLoading = false

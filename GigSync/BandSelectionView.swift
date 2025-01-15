@@ -3,7 +3,9 @@ import FirebaseAuth
 
 struct BandSelectionView: View {
     @StateObject private var authManager = AuthenticationManager.shared
+    @State private var showBandSetup = false
     @State private var showCreateBand = false
+    @State private var showJoinBand = false
     @State private var isLoading = true
     @State private var loadingError: Error?
     
@@ -11,8 +13,8 @@ struct BandSelectionView: View {
         NavigationView {
             ZStack {
                 LinearGradient(gradient: Gradient(colors: [.blue.opacity(0.1), .purple.opacity(0.1)]),
-                               startPoint: .topLeading,
-                               endPoint: .bottomTrailing)
+                              startPoint: .topLeading,
+                              endPoint: .bottomTrailing)
                 .ignoresSafeArea()
                 
                 Group {
@@ -26,11 +28,30 @@ struct BandSelectionView: View {
             .navigationTitle("My Bands")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button(action: { showBandSetup = true }) {
+                            Label("Create Band", systemImage: "plus.circle")
+                        }
+                        Button(action: { showBandSetup = true }) {
+                            Label("Join Band", systemImage: "person.badge.plus")
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
                     logoutButton
                 }
             }
+            .sheet(isPresented: $showBandSetup) {
+                BandSetupView(showCreateBand: $showCreateBand, showJoinBand: $showJoinBand)
+            }
             .sheet(isPresented: $showCreateBand) {
-                BandSetupView()
+                CreateBandView()
+            }
+            .sheet(isPresented: $showJoinBand) {
+                JoinBandView()
             }
             .task {
                 withAnimation {
@@ -92,15 +113,28 @@ struct BandSelectionView: View {
             Text("Create your first band to get started!")
                 .foregroundColor(.secondary)
             
-            Button(action: { showCreateBand = true }) {
-                Text("Create Band")
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(width: 200)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
+            HStack(spacing: 16) {
+                Button(action: { showBandSetup = true }) {
+                    Text("Create Band")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                }
+                
+                Button(action: { showBandSetup = true }) {
+                    Text("Join Band")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple)
+                        .cornerRadius(10)
+                }
             }
+            .padding(.horizontal)
         }
         .padding()
     }
@@ -139,8 +173,8 @@ struct BandSelectionView: View {
             HStack(spacing: 16) {
                 Circle()
                     .fill(LinearGradient(colors: [.blue, .purple],
-                                         startPoint: .topLeading,
-                                         endPoint: .bottomTrailing))
+                                       startPoint: .topLeading,
+                                       endPoint: .bottomTrailing))
                     .frame(width: 50, height: 50)
                     .overlay {
                         Text(band.name.prefix(1).uppercased())

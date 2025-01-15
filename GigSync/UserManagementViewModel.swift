@@ -79,7 +79,7 @@ class UserManagementViewModel: ObservableObject {
     
     func updateInviteCode(bandId: String, newCode: String) {
         guard !bandId.isEmpty,
-              Auth.auth().currentUser?.email == "jackhodgy@thetysms.co.uk" else { return }
+              Auth.auth().currentUser?.email == "jackhodgyuk@gmail.com" else { return }
         let ref = db.collection("bands").document(bandId)
         ref.updateData(["joinCode": newCode])
     }
